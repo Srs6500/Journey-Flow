@@ -27,6 +27,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.example.travelpractice.ui.theme.MyApplicationTheme
+import com.example.travelpractice.navigation.AppNavigation
 
 class MainActivity : ComponentActivity() {
     private lateinit var auth: FirebaseAuth
@@ -103,19 +104,12 @@ fun LoginScreen(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient, goog
     // Listen for auth state changes
     LaunchedEffect(Unit) {
         auth.addAuthStateListener { firebaseAuth ->
-            if (firebaseAuth.currentUser != null) {
-                showChecklist = true
-            }
+            showChecklist = firebaseAuth.currentUser != null
         }
     }
 
     if (showChecklist) {
-        ChecklistScreen(
-            onSignOut = {
-                auth.signOut()
-                showChecklist = false
-            }
-        )
+        AppNavigation()
     } else {
         Column(
             modifier = Modifier
@@ -203,7 +197,7 @@ fun LoginScreen(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient, goog
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Login", fontSize = 16.sp)
+                    Text("Sign In", fontSize = 16.sp)
                 }
             }
 
@@ -245,8 +239,8 @@ fun LoginScreen(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient, goog
                 }
             }
 
-            // Sign Up Link
-            TextButton(
+            // Sign Up Button
+            Button(
                 onClick = {
                     isLoading = true
                     errorMessage = ""
@@ -261,10 +255,20 @@ fun LoginScreen(auth: FirebaseAuth, googleSignInClient: GoogleSignInClient, goog
                             }
                         }
                 },
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(top = 16.dp),
                 enabled = !isLoading && email.isNotBlank() && password.isNotBlank()
             ) {
-                Text("Don't have an account? Sign Up")
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Sign Up", fontSize = 16.sp)
+                }
             }
         }
     }

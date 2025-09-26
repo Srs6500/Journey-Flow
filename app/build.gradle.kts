@@ -59,6 +59,21 @@ dependencies {
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.7.5")
+    
+    // ViewModel
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    
+    // Date/Time picker (commented out for now)
+    // implementation("io.github.vanpra.compose-material-dialogs:datetime:0.9.0")
+    
+    // Charts (TODO: Add when implementing chart features)
+    // implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+    
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
