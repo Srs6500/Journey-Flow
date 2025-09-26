@@ -103,4 +103,5 @@ keystore.properties
 *.jks
 
 # Debug files
-debug.keystore
+debug.keystoreapp/google-services.json
+secrets.properties
