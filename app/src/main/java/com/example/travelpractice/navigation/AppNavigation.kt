@@ -14,16 +14,17 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.travelpractice.screens.PackingListScreen
-import com.example.travelpractice.screens.TravelTasksScreen
-import com.example.travelpractice.screens.ExpenseTrackingScreen
-import com.example.travelpractice.screens.ProfileScreen
+import com.example.travelpractice.screens.EnhancedChecklistScreen
+// import com.example.travelpractice.screens.TravelTasksScreen // REMOVED
+// import com.example.travelpractice.screens.ExpenseTrackingScreen // REMOVED
+// import com.example.travelpractice.screens.ProfileScreen // REMOVED
 import com.google.firebase.auth.FirebaseAuth
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object Packing : Screen("packing", "Packing", Icons.Default.List)
-    object Tasks : Screen("tasks", "Tasks", Icons.Default.Check)
-    object Expenses : Screen("expenses", "Expenses", Icons.Default.Star)
-    object Profile : Screen("profile", "Profile", Icons.Default.Person)
+    // object Tasks : Screen("tasks", "Tasks", Icons.Default.Check) // REMOVED
+    // object Expenses : Screen("expenses", "Expenses", Icons.Default.Star) // REMOVED
+    // object Profile : Screen("profile", "Profile", Icons.Default.Person) // REMOVED
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,10 +34,10 @@ fun AppNavigation() {
     val auth = FirebaseAuth.getInstance()
     
     val screens = listOf(
-        Screen.Packing,
-        Screen.Tasks,
-        Screen.Expenses,
-        Screen.Profile
+        Screen.Packing
+        // Screen.Tasks, // REMOVED
+        // Screen.Expenses, // REMOVED
+        // Screen.Profile // REMOVED
     )
     
     Scaffold(
@@ -76,19 +77,19 @@ fun AppNavigation() {
                     }
                 )
             }
-            composable(Screen.Tasks.route) {
-                TravelTasksScreen()
-            }
-            composable(Screen.Expenses.route) {
-                ExpenseTrackingScreen()
-            }
-            composable(Screen.Profile.route) {
-                ProfileScreen(
-                    onSignOut = {
-                        auth.signOut()
-                    }
-                )
-            }
+            // composable(Screen.Tasks.route) { // REMOVED
+            //     TravelTasksScreen()
+            // }
+            // composable(Screen.Expenses.route) { // REMOVED
+            //     ExpenseTrackingScreen()
+            // }
+            // composable(Screen.Profile.route) { // REMOVED
+            //     ProfileScreen(
+            //         onSignOut = {
+            //             auth.signOut()
+            //         }
+            //     )
+            // }
         }
     }
 }

@@ -40,11 +40,11 @@ fun PackingListScreen(
     LaunchedEffect(categories) {
         if (categories.isEmpty()) {
             val defaultCategories = listOf(
-                PackingCategory(name = "Toiletries", color = "#FF6200EE", isDefault = true),
-                PackingCategory(name = "Clothing", color = "#FF03DAC5", isDefault = true),
-                PackingCategory(name = "Travel Essentials", color = "#FF6200EE", isDefault = true),
-                PackingCategory(name = "Electronics", color = "#FF03DAC5", isDefault = true),
-                PackingCategory(name = "Documents", color = "#FF6200EE", isDefault = true)
+                PackingCategory(name = "Toiletries", color = "#FF6200EE", default = true),
+                PackingCategory(name = "Clothing", color = "#FF03DAC5", default = true),
+                PackingCategory(name = "Travel Essentials", color = "#FF6200EE", default = true),
+                PackingCategory(name = "Electronics", color = "#FF03DAC5", default = true),
+                PackingCategory(name = "Documents", color = "#FF6200EE", default = true)
             )
             defaultCategories.forEach { category ->
                 viewModel.addCategory(category)
@@ -198,28 +198,44 @@ fun PackingListScreen(
         }
     }
     
-    // Add Category Dialog
+    // Category Selection Dialog
     if (showAddCategoryDialog) {
-        AddCategoryDialog(
+        // Debug: Show categories count
+        LaunchedEffect(categories) {
+            println("DEBUG: Categories count: ${categories.size}")
+            categories.forEach { category ->
+                println("DEBUG: Category: ${category.name}, ID: ${category.id}")
+            }
+        }
+        
+        com.example.travelpractice.screens.CategorySelectionDialog(
+            categories = categories,
             onDismiss = { showAddCategoryDialog = false },
-            onAdd = { category ->
-                viewModel.addCategory(category)
+            onCategorySelected = { categoryId ->
+                selectedCategoryId = categoryId
                 showAddCategoryDialog = false
+                showAddItemDialog = true
             }
         )
     }
     
-    // Add Item Dialog
+    // Smart Add Item Dialog
     if (showAddItemDialog) {
-        AddItemDialog(
-            categories = categories,
-            selectedCategoryId = selectedCategoryId,
-            onDismiss = { showAddItemDialog = false },
-            onAdd = { item ->
-                viewModel.addItem(item)
-                showAddItemDialog = false
-            }
-        )
+        val selectedCategory = categories.find { it.id == selectedCategoryId }
+        if (selectedCategory != null) {
+            com.example.travelpractice.screens.SmartAddItemDialog(
+                category = selectedCategory,
+                onDismiss = { 
+                    showAddItemDialog = false
+                    selectedCategoryId = ""
+                },
+                onAdd = { item ->
+                    viewModel.addItem(item)
+                    showAddItemDialog = false
+                    selectedCategoryId = ""
+                }
+            )
+        }
     }
     
     // Error Message
@@ -405,7 +421,7 @@ fun AddCategoryDialog(
             TextButton(
                 onClick = {
                     if (name.isNotBlank()) {
-                        onAdd(PackingCategory(name = name, color = selectedColor))
+                        onAdd(PackingCategory(name = name, color = selectedColor, userId = ""))
                     }
                 }
             ) {

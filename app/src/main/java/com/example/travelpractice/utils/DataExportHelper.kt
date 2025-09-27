@@ -36,23 +36,9 @@ class DataExportHelper(private val context: Context) {
                 .await()
                 .toObjects(PackingItem::class.java)
             
-            val tasks = db.collection("travel_tasks")
-                .whereEqualTo("userId", userId)
-                .get()
-                .await()
-                .toObjects(TravelTask::class.java)
+            // Travel tasks removed - focusing only on checklist
             
-            val expenses = db.collection("expenses")
-                .whereEqualTo("userId", userId)
-                .get()
-                .await()
-                .toObjects(Expense::class.java)
-            
-            val budgets = db.collection("budgets")
-                .whereEqualTo("userId", userId)
-                .get()
-                .await()
-                .toObjects(Budget::class.java)
+            // Expenses and budgets removed - focusing only on checklist
             
             // Create JSON export
             val exportData = JSONObject().apply {
@@ -68,7 +54,7 @@ class DataExportHelper(private val context: Context) {
                             put("name", category.name)
                             put("color", category.color)
                             put("createdAt", category.createdAt.time)
-                            put("isDefault", category.isDefault)
+                            put("default", category.default)
                         })
                     }
                 })
@@ -81,56 +67,18 @@ class DataExportHelper(private val context: Context) {
                             put("categoryId", item.categoryId)
                             put("isChecked", item.isChecked)
                             put("createdAt", item.createdAt.time)
-                            put("isDefault", item.isDefault)
                         })
                     }
                 })
                 
-                // Tasks data
-                put("travelTasks", JSONArray().apply {
-                    tasks.forEach { task ->
-                        put(JSONObject().apply {
-                            put("id", task.id)
-                            put("title", task.title)
-                            put("description", task.description)
-                            put("category", task.category.name)
-                            put("dueDate", task.dueDate?.time)
-                            put("isCompleted", task.isCompleted)
-                            put("priority", task.priority.name)
-                            put("createdAt", task.createdAt.time)
-                            put("completedAt", task.completedAt?.time)
-                        })
-                    }
-                })
+                // Tasks data - REMOVED (focusing only on checklist)
+                put("travelTasks", JSONArray())
                 
-                // Expenses data
-                put("expenses", JSONArray().apply {
-                    expenses.forEach { expense ->
-                        put(JSONObject().apply {
-                            put("id", expense.id)
-                            put("amount", expense.amount)
-                            put("description", expense.description)
-                            put("category", expense.category.name)
-                            put("date", expense.date.time)
-                            put("createdAt", expense.createdAt.time)
-                        })
-                    }
-                })
+                // Expenses data - REMOVED (focusing only on checklist)
+                put("expenses", JSONArray())
                 
-                // Budget data
-                put("budgets", JSONArray().apply {
-                    budgets.forEach { budget ->
-                        put(JSONObject().apply {
-                            put("id", budget.id)
-                            put("totalBudget", budget.totalBudget)
-                            put("dailyBudget", budget.dailyBudget)
-                            put("spentAmount", budget.spentAmount)
-                            put("startDate", budget.startDate.time)
-                            put("endDate", budget.endDate.time)
-                            put("createdAt", budget.createdAt.time)
-                        })
-                    }
-                })
+                // Budget data - REMOVED (focusing only on checklist)
+                put("budgets", JSONArray())
             }
             
             // Save to file
@@ -181,7 +129,7 @@ class DataExportHelper(private val context: Context) {
                     color = categoryObj.getString("color"),
                     userId = userId,
                     createdAt = Date(categoryObj.getLong("createdAt")),
-                    isDefault = categoryObj.getBoolean("isDefault")
+                    default = categoryObj.getBoolean("default")
                 )
                 db.collection("packing_categories").add(category).await()
             }
@@ -195,64 +143,16 @@ class DataExportHelper(private val context: Context) {
                     categoryId = itemObj.getString("categoryId"),
                     isChecked = itemObj.getBoolean("isChecked"),
                     userId = userId,
-                    createdAt = Date(itemObj.getLong("createdAt")),
-                    isDefault = itemObj.getBoolean("isDefault")
+                    createdAt = Date(itemObj.getLong("createdAt"))
                 )
                 db.collection("packing_items").add(item).await()
             }
             
-            // Import travel tasks
-            val tasksArray = importData.getJSONArray("travelTasks")
-            for (i in 0 until tasksArray.length()) {
-                val taskObj = tasksArray.getJSONObject(i)
-                val task = TravelTask(
-                    title = taskObj.getString("title"),
-                    description = taskObj.getString("description"),
-                    category = TaskCategory.valueOf(taskObj.getString("category")),
-                    dueDate = if (taskObj.has("dueDate") && !taskObj.isNull("dueDate")) {
-                        Date(taskObj.getLong("dueDate"))
-                    } else null,
-                    isCompleted = taskObj.getBoolean("isCompleted"),
-                    priority = TaskPriority.valueOf(taskObj.getString("priority")),
-                    userId = userId,
-                    createdAt = Date(taskObj.getLong("createdAt")),
-                    completedAt = if (taskObj.has("completedAt") && !taskObj.isNull("completedAt")) {
-                        Date(taskObj.getLong("completedAt"))
-                    } else null
-                )
-                db.collection("travel_tasks").add(task).await()
-            }
+            // Import travel tasks - REMOVED (focusing only on checklist)
             
-            // Import expenses
-            val expensesArray = importData.getJSONArray("expenses")
-            for (i in 0 until expensesArray.length()) {
-                val expenseObj = expensesArray.getJSONObject(i)
-                val expense = Expense(
-                    amount = expenseObj.getDouble("amount"),
-                    description = expenseObj.getString("description"),
-                    category = ExpenseCategory.valueOf(expenseObj.getString("category")),
-                    date = Date(expenseObj.getLong("date")),
-                    userId = userId,
-                    createdAt = Date(expenseObj.getLong("createdAt"))
-                )
-                db.collection("expenses").add(expense).await()
-            }
+            // Import expenses - REMOVED (focusing only on checklist)
             
-            // Import budgets
-            val budgetsArray = importData.getJSONArray("budgets")
-            for (i in 0 until budgetsArray.length()) {
-                val budgetObj = budgetsArray.getJSONObject(i)
-                val budget = Budget(
-                    totalBudget = budgetObj.getDouble("totalBudget"),
-                    dailyBudget = budgetObj.getDouble("dailyBudget"),
-                    spentAmount = budgetObj.getDouble("spentAmount"),
-                    startDate = Date(budgetObj.getLong("startDate")),
-                    endDate = Date(budgetObj.getLong("endDate")),
-                    userId = userId,
-                    createdAt = Date(budgetObj.getLong("createdAt"))
-                )
-                db.collection("budgets").add(budget).await()
-            }
+            // Import budgets - REMOVED (focusing only on checklist)
             
             return true
             
