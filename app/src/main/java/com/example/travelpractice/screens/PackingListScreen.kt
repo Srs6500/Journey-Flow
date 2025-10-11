@@ -36,21 +36,7 @@ fun PackingListScreen(
     var showRemainingOnly by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     
-    // Create default categories if none exist
-    LaunchedEffect(categories) {
-        if (categories.isEmpty()) {
-            val defaultCategories = listOf(
-                PackingCategory(name = "Toiletries", color = "#FF6200EE", default = true),
-                PackingCategory(name = "Clothing", color = "#FF03DAC5", default = true),
-                PackingCategory(name = "Travel Essentials", color = "#FF6200EE", default = true),
-                PackingCategory(name = "Electronics", color = "#FF03DAC5", default = true),
-                PackingCategory(name = "Documents", color = "#FF6200EE", default = true)
-            )
-            defaultCategories.forEach { category ->
-                viewModel.addCategory(category)
-            }
-        }
-    }
+    // Categories will be created manually via SmartCategoryDialog
     
     val filteredItems = if (showRemainingOnly) {
         viewModel.getRemainingItems().filter { 
@@ -152,7 +138,7 @@ fun PackingListScreen(
                     }
                     items(filteredItems) { item ->
                         val category = categories.find { it.id == item.categoryId }
-                        PackingItemCard(
+                        PackingItemCardLegacy(
                             item = item,
                             category = category,
                             onCheckedChange = { isChecked ->
@@ -181,7 +167,7 @@ fun PackingListScreen(
                             }
                             
                             items(categoryItems) { item ->
-                                PackingItemCard(
+                                PackingItemCardLegacy(
                                     item = item,
                                     category = category,
                                     onCheckedChange = { isChecked ->
@@ -198,23 +184,50 @@ fun PackingListScreen(
         }
     }
     
-    // Category Selection Dialog
+    // Smart Category Dialog
     if (showAddCategoryDialog) {
-        // Debug: Show categories count
-        LaunchedEffect(categories) {
-            println("DEBUG: Categories count: ${categories.size}")
-            categories.forEach { category ->
-                println("DEBUG: Category: ${category.name}, ID: ${category.id}")
-            }
-        }
-        
-        com.example.travelpractice.screens.CategorySelectionDialog(
-            categories = categories,
+        SmartCategoryDialog(
             onDismiss = { showAddCategoryDialog = false },
-            onCategorySelected = { categoryId ->
-                selectedCategoryId = categoryId
+            onCategorySelected = { categoryName ->
+                println("DEBUG: Category selected: $categoryName")
+                println("DEBUG: Current categories: ${categories.map { it.name }}")
+                // Find existing category or create new one
+                val existingCategory = categories.find { it.name == categoryName }
+                if (existingCategory != null) {
+                    println("DEBUG: Found existing category: ${existingCategory.name}")
+                    selectedCategoryId = existingCategory.id
+                    showAddCategoryDialog = false
+                    showAddItemDialog = true
+                } else {
+                    println("DEBUG: Creating new category: $categoryName")
+                    // Create new predefined category
+                    val newCategory = PackingCategory(
+                        name = categoryName,
+                        color = when (categoryName) {
+                            "Toiletries" -> "#FF6200EE"
+                            "Clothing" -> "#FF03DAC5"
+                            "Travel Essentials" -> "#FF4CAF50"
+                            "Electronics" -> "#FFFF9800"
+                            "Documents" -> "#FFF44336"
+                            else -> "#FF6200EE"
+                        },
+                        default = true
+                    )
+                    viewModel.addCategory(newCategory)
+                    // Don't open item dialog immediately - let user click + on category
+                    showAddCategoryDialog = false
+                }
+            },
+            onCreateCustom = { categoryName ->
+                // Create custom category
+                val customCategory = PackingCategory(
+                    name = categoryName,
+                    color = "#FF6200EE", // Default color
+                    default = false
+                )
+                viewModel.addCategory(customCategory)
+                // Don't open item dialog immediately - let user click + on category
                 showAddCategoryDialog = false
-                showAddItemDialog = true
             }
         )
     }
@@ -231,10 +244,20 @@ fun PackingListScreen(
                 },
                 onAdd = { item ->
                     viewModel.addItem(item)
+                    // Force refresh after adding item
+                    viewModel.loadData()
+                }
+            )
+        } else {
+            // Category not found yet, wait a bit and try again
+            LaunchedEffect(selectedCategoryId) {
+                kotlinx.coroutines.delay(1000) // Wait 1 second
+                if (categories.find { it.id == selectedCategoryId } == null) {
+                    // Still not found, close dialog
                     showAddItemDialog = false
                     selectedCategoryId = ""
                 }
-            )
+            }
         }
     }
     
@@ -299,7 +322,7 @@ fun CategoryHeader(
 }
 
 @Composable
-fun PackingItemCard(
+fun PackingItemCardLegacy(
     item: PackingItem,
     category: PackingCategory?,
     onCheckedChange: (Boolean) -> Unit,

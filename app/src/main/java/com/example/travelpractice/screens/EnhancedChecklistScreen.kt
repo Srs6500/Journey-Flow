@@ -36,6 +36,8 @@ fun EnhancedChecklistScreen(
     var searchQuery by remember { mutableStateOf("") }
     var expandedCategories by remember { mutableStateOf<Set<String>>(emptySet()) }
     
+    // Categories will be created manually via SmartCategoryDialog
+    
     // Calculate statistics
     val totalItems = items.size
     val checkedItems = items.count { it.isChecked }
@@ -135,60 +137,145 @@ fun EnhancedChecklistScreen(
                 CircularProgressIndicator()
             }
         } else {
+            // Debug information
+            LaunchedEffect(categories) {
+                println("DEBUG: Categories count: ${categories.size}")
+                categories.forEach { category ->
+                    println("DEBUG: Category: ${category.name}, ID: ${category.id}")
+                }
+            }
+            
             // Categories List with Items
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(filteredCategories) { category ->
-                    val categoryItems = items.filter { it.categoryId == category.id }
-                    val isExpanded = expandedCategories.contains(category.id)
-                    
-                    CategoryCard(
-                        category = category,
-                        items = categoryItems,
-                        isExpanded = isExpanded,
-                        onToggleExpanded = { 
-                            expandedCategories = if (isExpanded) {
-                                expandedCategories - category.id
-                            } else {
-                                expandedCategories + category.id
+                if (filteredCategories.isEmpty()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        Icons.Default.List,
+                                        contentDescription = "No Categories",
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = if (searchQuery.isNotEmpty()) "No categories found" else "No categories yet",
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "Tap + to add your first category",
+                                            fontSize = 14.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                             }
-                        },
-                        onAddItem = { 
-                            selectedCategory = category
-                            showAddItemDialog = true 
-                        },
-                        onUpdateItem = { item ->
-                            viewModel.updateItem(item)
-                        },
-                        onDeleteItem = { itemId ->
-                            viewModel.deleteItem(itemId)
-                        },
-                        onDeleteCategory = { categoryId ->
-                            viewModel.deleteCategory(categoryId)
                         }
-                    )
+                    }
+                } else {
+                    items(filteredCategories) { category ->
+                        val categoryItems = items.filter { it.categoryId == category.id }
+                        val isExpanded = expandedCategories.contains(category.id)
+                        
+                        CategoryCard(
+                            category = category,
+                            items = categoryItems,
+                            isExpanded = isExpanded,
+                            onToggleExpanded = { 
+                                expandedCategories = if (isExpanded) {
+                                    expandedCategories - category.id
+                                } else {
+                                    expandedCategories + category.id
+                                }
+                            },
+                            onAddItem = { 
+                                selectedCategory = category
+                                showAddItemDialog = true 
+                            },
+                            onUpdateItem = { item ->
+                                viewModel.updateItem(item)
+                            },
+                            onDeleteItem = { itemId ->
+                                viewModel.deleteItem(itemId)
+                            },
+                            onDeleteCategory = { categoryId ->
+                                viewModel.deleteCategory(categoryId)
+                            }
+                        )
+                    }
                 }
             }
         }
     }
     
-    // Add Category Dialog
+    // Smart Category Dialog
     if (showAddCategoryDialog) {
-        EnhancedAddCategoryDialog(
+        SmartCategoryDialog(
             onDismiss = { showAddCategoryDialog = false },
-            onAdd = { category: PackingCategory ->
-                viewModel.addCategory(category)
+            onCategorySelected = { categoryName ->
+                // Find existing category or create new one
+                val existingCategory = categories.find { it.name == categoryName }
+                if (existingCategory != null) {
+                    selectedCategory = existingCategory
+                    showAddCategoryDialog = false
+                    showAddItemDialog = true
+                } else {
+                    // Create new predefined category and immediately open item dialog
+                    val newCategory = PackingCategory(
+                        name = categoryName,
+                        color = when (categoryName) {
+                            "Toiletries" -> "#FF6200EE"
+                            "Clothing" -> "#FF03DAC5"
+                            "Travel Essentials" -> "#FF4CAF50"
+                            "Electronics" -> "#FFFF9800"
+                            "Documents" -> "#FFF44336"
+                            else -> "#FF6200EE"
+                        },
+                        default = true
+                    )
+                    viewModel.addCategory(newCategory)
+                    selectedCategory = newCategory
+                    showAddCategoryDialog = false
+                    showAddItemDialog = true
+                }
+            },
+            onCreateCustom = { categoryName ->
+                // Create custom category and immediately open item dialog
+                val customCategory = PackingCategory(
+                    name = categoryName,
+                    color = "#FF6200EE", // Default color
+                    default = false
+                )
+                viewModel.addCategory(customCategory)
+                selectedCategory = customCategory
                 showAddCategoryDialog = false
+                showAddItemDialog = true
             }
         )
     }
     
     // Add Item Dialog
     if (showAddItemDialog && selectedCategory != null) {
-        EnhancedAddItemDialog(
+        SmartAddItemDialog(
             category = selectedCategory!!,
             onDismiss = { 
                 showAddItemDialog = false
@@ -196,8 +283,8 @@ fun EnhancedChecklistScreen(
             },
             onAdd = { item ->
                 viewModel.addItem(item)
-                showAddItemDialog = false
-                selectedCategory = null
+                // Force refresh after adding item
+                viewModel.loadData()
             }
         )
     }
@@ -295,9 +382,11 @@ fun CategoryCard(
                     items.forEach { item ->
                         PackingItemCard(
                             item = item,
-                            onCheckedChange = { isChecked ->
+                            category = category,
+                            onCheckedChange = { isChecked: Boolean ->
                                 onUpdateItem(item.copy(isChecked = isChecked))
                             },
+                            onEdit = { },
                             onDelete = { onDeleteItem(item.id) }
                         )
                     }
@@ -312,7 +401,9 @@ fun CategoryCard(
 @Composable
 fun PackingItemCard(
     item: PackingItem,
+    category: PackingCategory?,
     onCheckedChange: (Boolean) -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Card(
@@ -331,21 +422,34 @@ fun PackingItemCard(
                 modifier = Modifier.padding(end = 12.dp)
             )
             
-            Text(
-                text = item.name,
-                fontSize = 16.sp,
-                modifier = Modifier.weight(1f),
-                style = if (item.isChecked) {
-                    MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.name,
+                    fontSize = 16.sp,
+                    style = if (item.isChecked) {
+                        MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        MaterialTheme.typography.bodyMedium
+                    }
+                )
+                category?.let {
+                    Text(
+                        text = it.name,
+                        fontSize = 12.sp,
+                        color = Color(android.graphics.Color.parseColor(it.color))
                     )
-                } else {
-                    MaterialTheme.typography.bodyMedium
                 }
-            )
+            }
             
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete")
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                }
             }
         }
     }

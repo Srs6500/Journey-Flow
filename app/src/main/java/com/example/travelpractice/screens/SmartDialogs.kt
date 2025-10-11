@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,6 +17,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.travelpractice.data.PackingCategory
 import com.example.travelpractice.data.PackingItem
+
+// Predefined categories for smart search
+val PREDEFINED_CATEGORIES = listOf(
+    "Toiletries", "Clothing", "Travel Essentials", "Electronics", "Documents"
+)
 
 // Predefined items for each category
 val PREDEFINED_ITEMS = mapOf(
@@ -44,6 +51,106 @@ val PREDEFINED_ITEMS = mapOf(
         "Travel Itinerary", "Maps", "Guidebook", "Important Phone Numbers"
     )
 )
+
+@Composable
+fun SmartCategoryDialog(
+    onDismiss: () -> Unit,
+    onCategorySelected: (String) -> Unit,
+    onCreateCustom: (String) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var showSuggestions by remember { mutableStateOf(false) }
+    
+    val filteredSuggestions = PREDEFINED_CATEGORIES.filter { 
+        it.contains(searchQuery, ignoreCase = true) 
+    }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Category") },
+        text = {
+            Column {
+                // Search box
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { 
+                        searchQuery = it
+                        showSuggestions = it.isNotBlank()
+                    },
+                    label = { Text("Search categories...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") }
+                )
+                
+                // Suggestions list
+                if (showSuggestions && filteredSuggestions.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Suggestions:",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    LazyColumn(
+                        modifier = Modifier.height(150.dp)
+                    ) {
+                        items(filteredSuggestions) { suggestion ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp),
+                                onClick = {
+                                    onCategorySelected(suggestion)
+                                }
+                            ) {
+                                Text(
+                                    text = suggestion,
+                                    modifier = Modifier.padding(12.dp),
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // Create custom option
+                if (searchQuery.isNotBlank() && !filteredSuggestions.contains(searchQuery)) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        onClick = {
+                            onCreateCustom(searchQuery)
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Create",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Create custom category: $searchQuery",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
 
 @Composable
 fun CategorySelectionDialog(
@@ -101,15 +208,24 @@ fun SmartAddItemDialog(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var showSuggestions by remember { mutableStateOf(false) }
+    var addedItems by remember { mutableStateOf<List<PackingItem>>(emptyList()) }
     
-    val predefinedItems = PREDEFINED_ITEMS[category.name] ?: emptyList()
+    // For predefined categories, show only their items
+    // For custom categories, show ALL items from all categories
+    val predefinedItems = if (PREDEFINED_ITEMS.containsKey(category.name)) {
+        PREDEFINED_ITEMS[category.name] ?: emptyList()
+    } else {
+        // Custom category - show ALL items from all predefined categories
+        PREDEFINED_ITEMS.values.flatten().distinct()
+    }
+    
     val filteredSuggestions = predefinedItems.filter { 
         it.contains(searchQuery, ignoreCase = true) 
     }
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Item to ${category.name}") },
+        title = { Text("Add Items to ${category.name}") },
         text = {
             Column {
                 // Search box
@@ -141,7 +257,14 @@ fun SmartAddItemDialog(
                                     .fillMaxWidth()
                                     .padding(vertical = 2.dp),
                                 onClick = {
-                                    searchQuery = suggestion
+                                    val newItem = PackingItem(
+                                        name = suggestion,
+                                        categoryId = category.id,
+                                        categoryName = category.name,
+                                        userId = ""
+                                    )
+                                    addedItems = addedItems + newItem
+                                    searchQuery = ""
                                     showSuggestions = false
                                 }
                             ) {
@@ -154,24 +277,105 @@ fun SmartAddItemDialog(
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            TextButton(
+                
+                // Create custom item option
+                if (searchQuery.isNotBlank() && !filteredSuggestions.contains(searchQuery)) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
                 onClick = {
-                    if (searchQuery.isNotBlank()) {
-                        onAdd(
-                            PackingItem(
+                            val newItem = PackingItem(
                                 name = searchQuery,
                                 categoryId = category.id,
                                 categoryName = category.name,
                                 userId = ""
                             )
-                        )
+                            addedItems = addedItems + newItem
+                            searchQuery = ""
+                            showSuggestions = false
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Create",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Create custom item: $searchQuery",
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
+                
+                // Added items list
+                if (addedItems.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Items to add (${addedItems.size}):",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    LazyColumn(
+                        modifier = Modifier.height(120.dp)
+                    ) {
+                        items(addedItems) { item ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = item.name,
+                                        fontSize = 14.sp
+                                    )
+                                    IconButton(
+                                        onClick = {
+                                            addedItems = addedItems.filter { it.name != item.name }
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Remove",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    // Add all items at once
+                    addedItems.forEach { item ->
+                        onAdd(item)
+                    }
+                    // Close dialog after adding
+                    onDismiss()
+                },
+                enabled = addedItems.isNotEmpty()
             ) {
-                Text("Add Item")
+                Text("Add ${addedItems.size} Items")
             }
         },
         dismissButton = {

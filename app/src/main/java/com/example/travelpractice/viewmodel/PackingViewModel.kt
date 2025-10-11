@@ -140,6 +140,7 @@ class PackingViewModel : ViewModel() {
                 val updatedCategory = category.copy(id = categoryId)
                 _categories.value = _categories.value + updatedCategory
                 println("DEBUG: Categories count after adding: ${_categories.value.size}")
+                println("DEBUG: Categories list: ${_categories.value.map { it.name }}")
             } catch (e: Exception) {
                 println("DEBUG: Error adding category: ${e.message}")
                 _errorMessage.value = e.message
@@ -172,11 +173,15 @@ class PackingViewModel : ViewModel() {
     fun addItem(item: PackingItem) {
         viewModelScope.launch {
             try {
+                println("DEBUG: Adding item: ${item.name} to category: ${item.categoryName}")
                 val itemId = repository.addPackingItem(item)
+                println("DEBUG: Item added with ID: $itemId")
                 // Update the local state immediately
                 val updatedItem = item.copy(id = itemId)
                 _items.value = _items.value + updatedItem
+                println("DEBUG: Items count after adding: ${_items.value.size}")
             } catch (e: Exception) {
+                println("DEBUG: Error adding item: ${e.message}")
                 _errorMessage.value = e.message
             }
         }

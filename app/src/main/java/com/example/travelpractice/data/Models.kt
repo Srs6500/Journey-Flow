@@ -25,3 +25,16 @@ data class PackingItem(
 // Travel Tasks Models REMOVED - focusing only on checklist feature
 
 // Expense Tracking Models REMOVED - focusing only on checklist feature
+
+// Review Models
+data class Review(
+    val id: String = "", // Document ID from Firestore
+    val userId: String = "", // User ID from Firebase Auth
+    val username: String = "", // Extracted from email (e.g., "chris050503" from "chris050503@gmail.com")
+    val tripId: String = "", // Optional - link to specific trip
+    val destination: String = "", // Location name (e.g., "Paris, France")
+    val rating: Int = 0, // 1-5 stars
+    val comment: String = "", // Review text
+    val createdAt: Long = System.currentTimeMillis(), // Timestamp as Long
+    val updatedAt: Long = System.currentTimeMillis() // Timestamp as Long
+)
